@@ -1,4 +1,4 @@
-repo-tools
+misc-tools
 ==========
 
-Git helper scripts
+Miscellaneous helper scripts
