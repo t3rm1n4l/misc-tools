@@ -1,7 +1,7 @@
 #ifndef BUFREADER_H
 #define BUFREADER_H
 
-#define BUF_SIZE 1048576
+#define BUF_SIZE (148576*2)
 
 typedef struct {
     int fd;
