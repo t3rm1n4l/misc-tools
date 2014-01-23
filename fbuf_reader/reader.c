@@ -2,13 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <fcntl.h>
 #include "reader.h"
 
 bufreader_t *bufreader_create(char *filename)
 {
     bufreader_t *buf = calloc(1, sizeof(bufreader_t));
-    buf->f = fopen(filename, "rb");
-    if (!buf->f) {
+    buf->fd = open(filename, O_RDONLY);
+    if (buf->fd < 0) {
         free(buf);
         return NULL;
     }
@@ -34,11 +35,9 @@ size_t bufreader_read(bufreader_t *buf, size_t len, char *out)
         buf->pos = 0;
         buf->end = buffered - 1;
         remaining = BUF_SIZE - buffered;
-        n = fread(buf->buf + buf->end + 1, 1, remaining, buf->f);
-        if (n != remaining) {
-            if (feof(buf->f)) {
+        n = read(buf->fd, buf->buf + buf->end + 1, remaining);
+        if (n == 0) {
                 buf->iseof = 1;
-            }
         }
 
         buf->end += n;

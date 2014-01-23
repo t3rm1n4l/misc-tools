@@ -4,7 +4,7 @@
 #define BUF_SIZE 1048576
 
 typedef struct {
-    FILE *f;
+    int fd;
     char buf[BUF_SIZE];
     int pos;
     int end;
