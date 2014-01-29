@@ -18,8 +18,8 @@ typedef struct {
 
 typedef struct {
     uint8_t   op;
-    sized_buf k;
-    sized_buf v;
+    uint16_t ksize;
+    uint32_t vsize;
 } view_file_merge_record_t;
 
 int read_view_record(FILE *in, void **buf)
@@ -60,19 +60,17 @@ int read_view_record(FILE *in, void **buf)
     }
 
     rec->op = op;
-    rec->k.size = klen;
-    rec->k.buf = ((char *) rec) + sizeof(view_file_merge_record_t);
-    rec->v.size = vlen;
-    rec->v.buf = ((char *) rec) + sizeof(view_file_merge_record_t) + klen;
+    rec->ksize = klen;
+    rec->vsize = vlen;
 
-    if (fread(rec->k.buf, klen + vlen, 1, in) != 1) {
+    if (fread(((char *) rec) + sizeof(view_file_merge_record_t), klen + vlen, 1, in) != 1) {
         free(rec);
         return 1;
     }
 
     *buf = (void *) rec;
 
-    return klen + vlen; //+ sizeof(view_file_merge_record_t);
+    return klen + vlen;
 }
 
 
@@ -89,7 +87,6 @@ int main(int argc, char **argv)
 
     records = (void **) calloc(record_count, sizeof(void *));
 
-    printf("size of record meta %d\n", sizeof(view_file_merge_record_t));
     //bufsize = record_count * sizeof(void *);
     HeapProfilerStart("program");
     while (x) {
