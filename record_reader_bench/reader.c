@@ -20,7 +20,7 @@ typedef struct {
     uint8_t   op;
     uint16_t ksize;
     uint32_t vsize;
-} view_file_merge_record_t;
+} __attribute__((packed)) view_file_merge_record_t;
 
 int read_view_record(FILE *in, void **buf)
 {
@@ -73,7 +73,6 @@ int read_view_record(FILE *in, void **buf)
     return klen + vlen;
 }
 
-
 int main(int argc, char **argv)
 {
 
@@ -87,6 +86,8 @@ int main(int argc, char **argv)
 
     records = (void **) calloc(record_count, sizeof(void *));
 
+    printf("Overhead is %d\n", sizeof(view_file_merge_record_t));
+
     //bufsize = record_count * sizeof(void *);
     HeapProfilerStart("program");
     while (x) {
@@ -96,8 +97,10 @@ int main(int argc, char **argv)
         bufsize += x;
         if (bufsize >= BUFSIZE) {
             printf("BUFSIZE: read %d records\n", c);
-
-            sleep(1000);
+            while (--c) {
+                free(records[c]);
+            }
+            bufsize = 0;
         }
 
 

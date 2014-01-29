@@ -1,7 +1,10 @@
 all:
-	gcc -ltcmalloc reader.c -o reader
+	gcc -g -ltcmalloc reader.c -o reader
 
 
-profile:
-	HEAPPROFILE=heap.prof ./reader 1.sort
+profile: clean
+	HEAP_PROFILE_ALLOCATION_INTERVAL=1242880 HEAPPROFILE=heap.prof ./reader 1.sort
+
+clean:
+	rm -rf heap.prof*
 
