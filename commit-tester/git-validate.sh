@@ -2,7 +2,7 @@
 
 if [ $# -ne 2 ];
 then
-    echo "Usage: $0 N"
+    echo "Usage: $0 rewind_number test_command"
     exit 1
 fi
 
@@ -11,7 +11,11 @@ cmd=$2
 
 > validation.txt
 
-head=`git log --oneline | head -1  | awk '{ print $1 }'`
+head=`git branch | grep -v detached | grep '^*' | cut -d' ' -f2`
+if [[ -z "$head" ]];
+then
+    head=`git log --oneline | head -1  | awk '{ print $1 }'`
+fi
 
 while [ $rewind_no -ge 0 ];
 do
