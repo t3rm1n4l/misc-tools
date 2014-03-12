@@ -10,16 +10,25 @@ calln(Fn, N) ->
     io:format("time ~p~n", [timer:now_diff(os:timestamp(), Start)]),
     calln(Fn, N-1).
 
+open_fast_fd(Filename, FilePid) ->
+    {ok, Fd} = file2:open(Filename, [read, raw, binary]),
+    erlang:put({FilePid, fast_fd_read}, Fd).
 
-start() -> 
+close_fast_fd(FilePid) ->
+    Fd = erlang:erase({FilePid, fast_fd_read}),
+    file:close(Fd).
+
+
+start() ->
     Filename = "/Users/sarath/development/couchbase/ns_server/data/n_0/data/@indexes/default/main_da1eaf6fac28abafd16daa38c3bbbfd7.view.1",
     couch_file_write_guard:sup_start_link(),
-    {ok, Fd}=couch_file:open(Filename),
+    {ok, Fd} = couch_file:open(Filename),
     Root = {41098790,<<0,0,15,66,63,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255>>,18982105},    %{ok, Btree}=couch_btree:open(NR, Fd),
     NewBtree0 = #btree{root=Root, fd=Fd, binary_mode=true},
     NewBtree = couch_btree:set_options(NewBtree0, [{less, less_fun}]),
 
     WrapperFn = fun() ->
+    open_fast_fd(Filename, Fd),
     {_,_,Val}  = couch_btree:foldl(NewBtree, fun(KV, Red, X) ->
                                                  case X of
                                                  10 ->
@@ -28,6 +37,7 @@ start() ->
                                                      {ok, X+1}
                                                  end
                                              end, 0),
+    close_fast_fd(Fd),
     Val
     end,
     Ops = 5500,
