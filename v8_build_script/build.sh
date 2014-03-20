@@ -25,6 +25,18 @@ index f183331..cd078f9 100644
            'GCC_VERSION': 'com.apple.compilers.llvmgcc42',
            'GCC_WARN_ABOUT_MISSING_NEWLINE': 'YES',  # -Wnewline-eof
            'GCC_WARN_NON_VIRTUAL_DESTRUCTOR': 'YES', # -Wnon-virtual-dtor
+diff --git a/src/typing.cc b/src/typing.cc
+index 34bb64b..661feb6 100644
+--- a/src/typing.cc
++++ b/src/typing.cc
+@@ -33,6 +33,7 @@
+ namespace v8 {
+ namespace internal {
+
++#pragma GCC diagnostic ignored "-Wuninitialized"
+
+ AstTyper::AstTyper(CompilationInfo* info)
+     : info_(info),
 EOF
 
 make -j8 library=shared i18nsupport=off native
