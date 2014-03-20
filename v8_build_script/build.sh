@@ -26,4 +26,4 @@ index b62e909..263bf55 100644
      : info_(info),
 EOF
 
-make -j8 library=shared 18nsupport=off native
+make -j8 library=shared i18nsupport=off native
