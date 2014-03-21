@@ -39,4 +39,17 @@ index 34bb64b..661feb6 100644
      : info_(info),
 EOF
 
+cat <<EOF | (cd build/gyp; git apply)
+diff --git a/gyp b/gyp
+index b53a6dd..b298550 100755
+--- a/gyp
++++ b/gyp
+@@ -5,4 +5,4 @@
+ 
+ set -e
+ base=\$(dirname "\$0")
+-exec python "\${base}/gyp_main.py" "\$@"
++exec python2.6 "\${base}/gyp_main.py" "\$@"
+EOF
+
 make -j8 library=shared i18nsupport=off native
