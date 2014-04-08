@@ -25,6 +25,19 @@ index f183331..cd078f9 100644
            'GCC_VERSION': 'com.apple.compilers.llvmgcc42',
            'GCC_WARN_ABOUT_MISSING_NEWLINE': 'YES',  # -Wnewline-eof
            'GCC_WARN_NON_VIRTUAL_DESTRUCTOR': 'YES', # -Wnon-virtual-dtor
+diff --git a/src/d8.gyp b/src/d8.gyp
+index c033fd7..72915ea 100644
+--- a/src/d8.gyp
++++ b/src/d8.gyp
+@@ -119,7 +119,7 @@
+             '<(SHARED_INTERMEDIATE_DIR)/d8-js.cc',
+           ],
+           'action': [
+-            'python',
++            'python2.6',
+             '../tools/js2c.py',
+             '<@(_outputs)',
+             'D8',
 diff --git a/src/ia32/lithium-codegen-ia32.cc b/src/ia32/lithium-codegen-ia32.cc
 index 06628ff..a6935a4 100644
 --- a/src/ia32/lithium-codegen-ia32.cc
@@ -49,6 +62,50 @@ index 34bb64b..661feb6 100644
  
  AstTyper::AstTyper(CompilationInfo* info)
      : info_(info),
+diff --git a/test/cctest/cctest.gyp b/test/cctest/cctest.gyp
+index ee7ffad..a360043 100644
+--- a/test/cctest/cctest.gyp
++++ b/test/cctest/cctest.gyp
+@@ -213,7 +213,7 @@
+             '<(generated_file)',
+           ],
+           'action': [
+-            'python',
++            'python2.6',
+             '../../tools/js2c.py',
+             '<@(_outputs)',
+             'TEST',  # type
+diff --git a/tools/gyp/v8.gyp b/tools/gyp/v8.gyp
+index f5d82df..844077c 100644
+--- a/tools/gyp/v8.gyp
++++ b/tools/gyp/v8.gyp
+@@ -938,7 +938,7 @@
+             '<(SHARED_INTERMEDIATE_DIR)/libraries.cc',
+           ],
+           'action': [
+-            'python',
++            'python2.6',
+             '../../tools/js2c.py',
+             '<@(_outputs)',
+             'CORE',
+@@ -957,7 +957,7 @@
+             '<(SHARED_INTERMEDIATE_DIR)/experimental-libraries.cc',
+           ],
+           'action': [
+-            'python',
++            'python2.6',
+             '../../tools/js2c.py',
+             '<@(_outputs)',
+             'EXPERIMENTAL',
+@@ -987,7 +987,7 @@
+               '<(SHARED_INTERMEDIATE_DIR)/debug-support.cc',
+             ],
+             'action': [
+-              'python',
++              'python2.6',
+               '../../tools/gen-postmortem-metadata.py',
+               '<@(_outputs)',
+               '<@(heapobject_files)'
 diff --git a/tools/js2c.py b/tools/js2c.py
 index 9492b00..c15f635 100644
 --- a/tools/js2c.py
