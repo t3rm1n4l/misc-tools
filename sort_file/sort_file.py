@@ -2,6 +2,7 @@
 
 import struct
 import os
+import sys
 
 def read_record(f):
     buf = f.read(4)
@@ -10,15 +11,21 @@ def read_record(f):
 
     rlen = struct.unpack('<I', buf)[0]
 
+    optype = f.read(1)
+    if struct.unpack("b", optype)[0] == 1:
+        optype = "remove"
+    else:
+        optype = "insert"
+
     buf = f.read(2)
     klen = struct.unpack('>h', buf)[0]
 
-    vlen = rlen - klen - 2
+    vlen = rlen - klen - 2 - 1
 
     key = f.read(klen)
     val = f.read(vlen)
 
-    return key, val
+    return optype, key, val
 
 def write_record(f, key, val):
     klen = len(key)
@@ -47,7 +54,10 @@ write_record(f, "key2", "val2")
 f.close()
 """
 
-print read_records("/Users/sarath/development/couchbase/test_data/index_builder_backup/sort_files/45ec5bb324149fb577a146f0c40028a1.sort", 10)
+if __name__ == '__main__':
+    f = sys.argv[1]
+    for r in read_records(f, 100000):
+        print r
 
 
 
