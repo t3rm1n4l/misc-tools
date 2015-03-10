@@ -43,4 +43,16 @@ func main() {
 	}
 	fmt.Printf("loading %v items took %v\n", n, time.Now().Sub(st))
 
+	quitch := make(indexer.StopChannel)
+	si, _ := slice.NewSnapshot(nil, false)
+	snap, _ := slice.OpenSnapshot(si)
+	kch, _ := snap.KeySet(quitch)
+
+	st = time.Now()
+	var count int = 0
+	for _ = range kch {
+		count++
+	}
+	fmt.Printf("iterating %v items took %v\n", n, time.Now().Sub(st))
+
 }
