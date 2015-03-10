@@ -43,16 +43,28 @@ func main() {
 	}
 	fmt.Printf("loading %v items took %v\n", n, time.Now().Sub(st))
 
-	quitch := make(indexer.StopChannel)
 	si, _ := slice.NewSnapshot(nil, false)
 	snap, _ := slice.OpenSnapshot(si)
+	var count int = 0
+	st = time.Now()
+	quitch := make(indexer.StopChannel)
 	kch, _ := snap.KeySet(quitch)
 
-	st = time.Now()
-	var count int = 0
 	for _ = range kch {
 		count++
 	}
-	fmt.Printf("iterating %v items took %v\n", n, time.Now().Sub(st))
+	fmt.Printf("iterating (ch) %v items took %v\n", n, time.Now().Sub(st))
+
+	st = time.Now()
+	count = 0
+	var ckr indexer.CallbackKeyReader
+	ckr = snap.(indexer.CallbackKeyReader)
+
+	cb := func(k indexer.Key) bool {
+		count++
+		return true
+	}
+	ckr.KeySetCb(cb)
+	fmt.Printf("iterating (cb) %v items took %v\n", n, time.Now().Sub(st))
 
 }
