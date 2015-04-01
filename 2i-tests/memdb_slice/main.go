@@ -12,17 +12,15 @@ import (
 var n = 0
 
 type KV struct {
-	k indexer.Key
-	v indexer.Value
+	k []byte
+	v []byte
 }
 
 func loader(ch chan *KV) {
 	for i := 0; i < n; i++ {
 		k := fmt.Sprintf("[\"key-%0250d\"]", i)
 		v := fmt.Sprintf("doc-%d", i)
-		key, _ := indexer.NewKey([]byte(k))
-		value, _ := indexer.NewValue([]byte(v))
-		kv := &KV{k: key, v: value}
+		kv := &KV{k: []byte(k), v: []byte(v)}
 		ch <- kv
 	}
 	close(ch)
