@@ -50,7 +50,9 @@ func main() {
 	ch := make(chan *KV, 1000)
 	go loader(ch)
 
-	slice, err := indexer.NewMemDBSlice(indexer.SliceId(0), c.IndexDefnId(0), c.IndexInstId(0), false, nil)
+	conf := c.SystemConfig.SectionConfig("indexer.", true)
+	//slice, err := indexer.NewMemDBSlice(indexer.SliceId(0), c.IndexDefnId(0), c.IndexInstId(0), false, nil)
+	slice, err := indexer.NewForestDBSlice("/tmp/test.fdb", indexer.SliceId(0), c.IndexDefnId(0), c.IndexInstId(0), false, conf)
 	c.CrashOnError(err)
 
 	st := time.Now()
@@ -78,12 +80,12 @@ func main() {
 
 		src := indexer.IndexEntrySrc{
 			Snapshot: snap,
-			Outch:    make(chan *[]byte, 1),
+			Outch:    make(chan *[]byte, 3),
 		}
 
 		dec := indexer.IndexEntryDecoder{
 			Inch:  src.Outch,
-			Outch: make(chan *[]byte, 1),
+			Outch: make(chan *[]byte, 3),
 		}
 
 		send := indexer.IndexEntrySender{
