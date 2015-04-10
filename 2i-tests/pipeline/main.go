@@ -5,6 +5,7 @@ import (
 	"fmt"
 	c "github.com/couchbase/indexing/secondary/common"
 	"github.com/couchbase/indexing/secondary/indexer"
+	"github.com/couchbase/indexing/secondary/pipeline"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -50,9 +51,9 @@ func main() {
 	ch := make(chan *KV, 1000)
 	go loader(ch)
 
-	conf := c.SystemConfig.SectionConfig("indexer.", true)
-	//slice, err := indexer.NewMemDBSlice(indexer.SliceId(0), c.IndexDefnId(0), c.IndexInstId(0), false, nil)
-	slice, err := indexer.NewForestDBSlice("/tmp/test.fdb", indexer.SliceId(0), c.IndexDefnId(0), c.IndexInstId(0), false, conf)
+	slice, err := indexer.NewMemDBSlice(indexer.SliceId(0), c.IndexDefnId(0), c.IndexInstId(0), false, nil)
+	//conf := c.SystemConfig.SectionConfig("indexer.", true)
+	//	slice, err := indexer.NewForestDBSlice("/tmp/test.fdb", indexer.SliceId(0), c.IndexDefnId(0), c.IndexInstId(0), false, conf)
 	c.CrashOnError(err)
 
 	st := time.Now()
@@ -68,35 +69,35 @@ func main() {
 	snap, _ := slice.OpenSnapshot(si)
 	//var count int = 0
 
-	for i := 0; i < 10; i++ {
-		pool := indexer.BlockPool.Get()
-		indexer.BlockPool.Put(pool)
+	for i := 0; i < 100; i++ {
+		pool := pipeline.GetBlock()
+		pipeline.PutBlock(pool)
 	}
 
 	ln, _ := net.Listen("tcp", ":8081")
+	src := &indexer.IndexScanSource{
+		Snapshot: snap,
+	}
+	dec := &indexer.IndexScanDecoder{}
+	send := &indexer.IndexScanWriter{}
 
 	for {
 		conn, _ := ln.Accept()
 
-		src := indexer.IndexEntrySrc{
-			Snapshot: snap,
-			Outch:    make(chan *[]byte, 3),
-		}
+		var p pipeline.Pipeline
 
-		dec := indexer.IndexEntryDecoder{
-			Inch:  src.Outch,
-			Outch: make(chan *[]byte, 3),
-		}
+		src.InitWriter()
+		dec.InitReadWriter()
+		send.W = conn
+		send.InitReader()
 
-		send := indexer.IndexEntrySender{
-			Inch: dec.Outch,
-			W:    conn,
-		}
+		dec.SetSource(src)
+		send.SetSource(dec)
 
-		go src.Routine()
-		go dec.Routine()
-
-		send.Routine()
+		p.AddSource("source", src)
+		p.AddFilter("decoder", dec)
+		p.AddSink("sender", send)
+		p.Execute()
 
 		conn.Close()
 	}
