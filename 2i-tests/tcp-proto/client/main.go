@@ -6,9 +6,11 @@ import "fmt"
 import "time"
 import "strconv"
 import "sync"
+import "runtime"
 
 func main() {
 
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	var wg sync.WaitGroup
 	req := make([]byte, 25)
 

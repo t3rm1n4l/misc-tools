@@ -1,8 +1,10 @@
 package main
 
 import "net"
+import "runtime"
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	res := []byte("123456")
 	ln, _ := net.Listen("tcp", ":7777")
 	for {
