@@ -3,7 +3,6 @@ package main
 import "net"
 import "sync"
 import "encoding/binary"
-import "runtime"
 import "io"
 import "bufio"
 
@@ -18,7 +17,7 @@ type Client struct {
 	sync.Mutex
 	n        uint32
 	connMap  map[uint32]chan io.Reader
-	connPool []io.Writer
+	connPool chan io.Writer
 	conns    int
 }
 
@@ -53,9 +52,7 @@ func (c *Client) ReleaseReadConn(conn io.Reader) {
 }
 
 func (c *Client) ReleaseWriteConn(conn io.Writer) {
-	c.Lock()
-	defer c.Unlock()
-	c.connPool = append(c.connPool, conn)
+	c.connPool <- conn
 }
 
 func (c *Client) monitorConn(conn io.Reader) {
@@ -80,37 +77,32 @@ func (c *Client) addConn() {
 		panic(err)
 	}
 
-	rdr := bufio.NewReaderSize(conn, 1024*4)
-	wr := bufio.NewWriterSize(conn, 1024*4)
-	c.connPool = append(c.connPool, wr)
+	rdr := bufio.NewReaderSize(conn, bufSize)
+	wr := bufio.NewWriterSize(conn, bufSize)
+	c.connPool <- wr
 	go c.monitorConn(rdr)
 }
 
 func (c *Client) GetWriteConn(id uint32) io.Writer {
-retry:
 	c.Lock()
-	if len(c.connPool) == 0 {
-		if c.conns < maxConns {
-			c.addConn()
-			c.conns++
-		} else {
-			c.Unlock()
-			runtime.Gosched()
-			goto retry
-		}
+	defer c.Unlock()
+
+	if c.conns < maxConns {
+		c.addConn()
+		c.conns++
 	}
 
-	defer c.Unlock()
-	conn := c.connPool[0]
+	conn := <-c.connPool
 	err := binary.Write(conn, binary.LittleEndian, id)
 	if err != nil {
 		panic(err)
 	}
-	c.connPool = c.connPool[1:]
 	return conn
 }
 
 func (c *Client) Close() {
-	conn := c.connPool[0]
-	conn.(*bufio.Writer).Flush()
+	close(c.connPool)
+	for conn := range c.connPool {
+		conn.(*bufio.Writer).Flush()
+	}
 }

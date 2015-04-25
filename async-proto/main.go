@@ -12,8 +12,8 @@ import _ "net/http/pprof"
 import "encoding/json"
 
 var (
-	ReqSize  = 3
-	RespSize = 3
+	ReqSize  = 2
+	RespSize = 2
 	pool     sync.Pool
 )
 
@@ -28,26 +28,26 @@ func stats(w http.ResponseWriter, r *http.Request) {
 func main() {
 
 	http.HandleFunc("/stats/mem", stats)
-	go func() {
-		http.ListenAndServe("localhost:9102", nil)
-	}()
 
 	pool = sync.Pool{
 		New: func() interface{} {
-			return make([]byte, 3)
+			return make([]byte, ReqSize)
 		},
 	}
 
 	if os.Args[1] == "server" {
 		s := Server{
-			addr: ":7777",
-			ch:   make(chan Message),
+			addr:     "localhost:7777",
+			ch:       make(chan Message),
+			connPool: make(chan io.Writer, 100),
 		}
+		go func() {
+			http.ListenAndServe("localhost:9102", nil)
+		}()
 
 		go s.Run()
 
 		respBuf := make([]byte, RespSize)
-		respBuf = []byte("got")
 
 		for {
 			msg := <-s.ch
@@ -67,17 +67,20 @@ func main() {
 			}()
 		}
 	} else {
+		go func() {
+			http.ListenAndServe("localhost:9103", nil)
+		}()
 
 		c := Client{
-			n:       1,
-			addr:    ":7777",
-			connMap: make(map[uint32]chan io.Reader),
+			n:        0,
+			addr:     "localhost:7777",
+			connMap:  make(map[uint32]chan io.Reader),
+			connPool: make(chan io.Writer, maxConns),
 		}
 
 		var wg1, wg2 sync.WaitGroup
 
 		reqBuf := make([]byte, ReqSize)
-		reqBuf = []byte("doi")
 
 		t0 := time.Now()
 		n, _ := strconv.Atoi(os.Args[2])
@@ -90,7 +93,7 @@ func main() {
 				s := c.NewStream()
 				conn := c.GetWriteConn(s.id)
 				conn.Write(reqBuf)
-				//		fmt.Println("client", i, "sent reqid", s.id)
+				//				fmt.Println("client", i, "sent reqid", s.id)
 				c.ReleaseWriteConn(conn)
 				wg1.Done()
 
@@ -98,14 +101,15 @@ func main() {
 
 				respBuf := pool.Get().([]byte)
 				io.ReadFull(conn2, respBuf)
-				pool.Put(respBuf)
 
 				c.ReleaseReadConn(conn2)
 				wg2.Done()
-				//		fmt.Println("client", i, "got resp", s.id)
+				//				fmt.Println("client", i, "got resp", s.id, string(respBuf))
+				pool.Put(respBuf)
 			}()
 		}
 		wg1.Wait()
+		fmt.Println("all written")
 		c.Close()
 		wg2.Wait()
 

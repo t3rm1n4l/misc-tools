@@ -5,17 +5,19 @@ import "encoding/binary"
 import "sync"
 
 import "fmt"
-import "runtime"
 import "io"
 import "bufio"
 import "time"
+
+const bufSize = 4 * 1024
 
 type Server struct {
 	sync.Mutex
 	addr string
 
-	connPool []io.Writer
+	connPool chan io.Writer
 	ch       chan Message
+	nr       int
 }
 
 type Message struct {
@@ -29,18 +31,21 @@ func (c *Server) Run() {
 	for {
 		conn, _ := ln.Accept()
 		n++
-		rdr := bufio.NewReaderSize(conn, 1024*4)
-		wr := bufio.NewWriterSize(conn, 1024*4)
+		rdr := bufio.NewReaderSize(conn, bufSize)
+		wr := bufio.NewWriterSize(conn, bufSize)
 		go func() {
+
 			for {
+				c.Lock()
+				if c.nr == 0 {
+					wr.Flush()
+				}
+				c.Unlock()
 				time.Sleep(time.Nanosecond * 1000000)
-				wr.Flush()
 			}
 		}()
 		fmt.Println("new serv conn", n)
-		c.Lock()
-		c.connPool = append(c.connPool, wr)
-		c.Unlock()
+		c.connPool <- wr
 		go c.monitorConn(rdr)
 	}
 }
@@ -51,7 +56,7 @@ func (c *Server) monitorConn(conn io.Reader) {
 	if err != nil {
 		fmt.Println("conn %s closed", conn)
 		c.Lock()
-		c.connPool = make([]io.Writer, 0)
+		c.connPool = make(chan io.Writer, 100)
 		c.Unlock()
 		return
 	}
@@ -64,29 +69,23 @@ func (s *Server) Channel() chan Message {
 }
 
 func (c *Server) GetWriteConn(id uint32) io.Writer {
-
-retry:
 	c.Lock()
-	if len(c.connPool) == 0 {
-		c.Unlock()
-		runtime.Gosched()
-		goto retry
-	}
+	c.nr++
+	c.Unlock()
 
-	defer c.Unlock()
-	conn := c.connPool[0]
+	conn := <-c.connPool
 	err := binary.Write(conn, binary.LittleEndian, id)
 	if err != nil {
 		panic(err)
 	}
-	c.connPool = c.connPool[1:]
 	return conn
 }
 
 func (c *Server) ReleaseWriteConn(conn io.Writer) {
 	c.Lock()
 	defer c.Unlock()
-	c.connPool = append(c.connPool, conn)
+	c.connPool <- conn
+	c.nr--
 }
 
 func (c *Server) ReleaseReadConn(conn io.Reader) {
@@ -94,6 +93,9 @@ func (c *Server) ReleaseReadConn(conn io.Reader) {
 }
 
 func (c *Server) Flush() {
-	conn := c.connPool[0].(*bufio.Writer)
-	conn.Flush()
+	close(c.connPool)
+	for x := range c.connPool {
+		conn := x.(*bufio.Writer)
+		conn.Flush()
+	}
 }
