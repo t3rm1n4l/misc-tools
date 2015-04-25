@@ -4,6 +4,8 @@ import "net"
 import "sync"
 import "encoding/binary"
 import "runtime"
+import "io"
+import "bufio"
 
 import "fmt"
 
@@ -15,14 +17,14 @@ type Client struct {
 	addr string
 	sync.Mutex
 	n        uint32
-	connMap  map[uint32]chan net.Conn
-	connPool []net.Conn
+	connMap  map[uint32]chan io.Reader
+	connPool []io.Writer
 	conns    int
 }
 
 type Stream struct {
 	id     uint32
-	connch chan net.Conn
+	connch chan io.Reader
 }
 
 func (c *Client) NewStream() Stream {
@@ -30,7 +32,7 @@ func (c *Client) NewStream() Stream {
 	defer c.Unlock()
 
 	c.n++
-	ch := make(chan net.Conn, 1)
+	ch := make(chan io.Reader, 1)
 	c.connMap[c.n] = ch
 
 	return Stream{
@@ -46,17 +48,17 @@ func (c *Client) CloseStream(id uint32) {
 	delete(c.connMap, id)
 }
 
-func (c *Client) ReleaseReadConn(conn net.Conn) {
+func (c *Client) ReleaseReadConn(conn io.Reader) {
 	go c.monitorConn(conn)
 }
 
-func (c *Client) ReleaseWriteConn(conn net.Conn) {
+func (c *Client) ReleaseWriteConn(conn io.Writer) {
 	c.Lock()
 	defer c.Unlock()
 	c.connPool = append(c.connPool, conn)
 }
 
-func (c *Client) monitorConn(conn net.Conn) {
+func (c *Client) monitorConn(conn io.Reader) {
 	var id uint32
 	err := binary.Read(conn, binary.LittleEndian, &id)
 	if err != nil {
@@ -74,17 +76,17 @@ func (c *Client) addConn() {
 	fmt.Println("new conn")
 	tcpAddr, _ := net.ResolveTCPAddr("tcp", c.addr)
 	conn, err := net.DialTCP("tcp", nil, tcpAddr)
-	conn.SetWriteBuffer(1024 * 4)
-	conn.SetReadBuffer(1024 * 4)
 	if err != nil {
 		panic(err)
 	}
 
-	c.connPool = append(c.connPool, conn)
-	go c.monitorConn(conn)
+	rdr := bufio.NewReaderSize(conn, 1024*4)
+	wr := bufio.NewWriterSize(conn, 1024*4)
+	c.connPool = append(c.connPool, wr)
+	go c.monitorConn(rdr)
 }
 
-func (c *Client) GetWriteConn(id uint32) net.Conn {
+func (c *Client) GetWriteConn(id uint32) io.Writer {
 retry:
 	c.Lock()
 	if len(c.connPool) == 0 {
@@ -106,4 +108,9 @@ retry:
 	}
 	c.connPool = c.connPool[1:]
 	return conn
+}
+
+func (c *Client) Close() {
+	conn := c.connPool[0]
+	conn.(*bufio.Writer).Flush()
 }

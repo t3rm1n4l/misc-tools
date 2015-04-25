@@ -1,7 +1,6 @@
 package main
 
 import "strconv"
-import "net"
 import "os"
 import "time"
 import "fmt"
@@ -72,10 +71,10 @@ func main() {
 		c := Client{
 			n:       1,
 			addr:    ":7777",
-			connMap: make(map[uint32]chan net.Conn),
+			connMap: make(map[uint32]chan io.Reader),
 		}
 
-		var wg sync.WaitGroup
+		var wg1, wg2 sync.WaitGroup
 
 		reqBuf := make([]byte, ReqSize)
 		reqBuf = []byte("doi")
@@ -84,26 +83,31 @@ func main() {
 		n, _ := strconv.Atoi(os.Args[2])
 		for i := 0; i < n; i++ {
 			//fmt.Println("client wrote", i)
-			wg.Add(1)
-			go func(wg *sync.WaitGroup) {
-				defer wg.Done()
+			wg1.Add(1)
+			wg2.Add(1)
+			go func() {
+
 				s := c.NewStream()
 				conn := c.GetWriteConn(s.id)
 				conn.Write(reqBuf)
 				//		fmt.Println("client", i, "sent reqid", s.id)
 				c.ReleaseWriteConn(conn)
+				wg1.Done()
 
-				conn = <-s.connch
+				conn2 := <-s.connch
 
 				respBuf := pool.Get().([]byte)
-				io.ReadFull(conn, respBuf)
+				io.ReadFull(conn2, respBuf)
 				pool.Put(respBuf)
 
-				c.ReleaseReadConn(conn)
+				c.ReleaseReadConn(conn2)
+				wg2.Done()
 				//		fmt.Println("client", i, "got resp", s.id)
-			}(&wg)
+			}()
 		}
-		wg.Wait()
+		wg1.Wait()
+		c.Close()
+		wg2.Wait()
 
 		fmt.Println(float64(n)/time.Now().Sub(t0).Seconds(), "reqs/sec")
 	}
