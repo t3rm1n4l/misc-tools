@@ -9,7 +9,7 @@ import "io"
 import "bufio"
 import "time"
 
-const bufSize = 4 * 1024
+const bufSize = 128 * 1024
 
 type Server struct {
 	sync.Mutex

@@ -12,8 +12,8 @@ import _ "net/http/pprof"
 import "encoding/json"
 
 var (
-	ReqSize  = 2
-	RespSize = 2
+	ReqSize  = 100
+	RespSize = 100
 	pool     sync.Pool
 )
 
@@ -78,40 +78,40 @@ func main() {
 			connPool: make(chan io.Writer, maxConns),
 		}
 
-		var wg1, wg2 sync.WaitGroup
+		var wg1 sync.WaitGroup
 
 		reqBuf := make([]byte, ReqSize)
 
 		t0 := time.Now()
 		n, _ := strconv.Atoi(os.Args[2])
-		for i := 0; i < n; i++ {
+		threads, _ := strconv.Atoi(os.Args[3])
+		perthread := n / threads
+		for i := 0; i < threads; i++ {
 			//fmt.Println("client wrote", i)
 			wg1.Add(1)
-			wg2.Add(1)
 			go func() {
+				defer wg1.Done()
 
-				s := c.NewStream()
-				conn := c.GetWriteConn(s.id)
-				conn.Write(reqBuf)
-				//				fmt.Println("client", i, "sent reqid", s.id)
-				c.ReleaseWriteConn(conn)
-				wg1.Done()
+				for x := 0; x < perthread; x++ {
+					s := c.NewStream()
+					conn := c.GetWriteConn(s.id)
+					conn.Write(reqBuf)
+					//				fmt.Println("client", i, "sent reqid", s.id)
+					c.ReleaseWriteConn(conn)
 
-				conn2 := <-s.connch
+					conn2 := <-s.connch
 
-				respBuf := pool.Get().([]byte)
-				io.ReadFull(conn2, respBuf)
+					respBuf := pool.Get().([]byte)
+					io.ReadFull(conn2, respBuf)
 
-				c.ReleaseReadConn(conn2)
-				wg2.Done()
-				//				fmt.Println("client", i, "got resp", s.id, string(respBuf))
-				pool.Put(respBuf)
+					c.ReleaseReadConn(conn2)
+					//				fmt.Println("client", i, "got resp", s.id, string(respBuf))
+					pool.Put(respBuf)
+					c.CloseStream(s.id)
+				}
 			}()
 		}
 		wg1.Wait()
-		fmt.Println("all written")
-		c.Close()
-		wg2.Wait()
 
 		fmt.Println(float64(n)/time.Now().Sub(t0).Seconds(), "reqs/sec")
 	}
