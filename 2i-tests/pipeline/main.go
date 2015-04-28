@@ -40,6 +40,38 @@ func stats(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
+type ISnapshot struct {
+	snap indexer.Snapshot
+}
+
+func (i ISnapshot) IndexInstId() c.IndexInstId {
+	return 0
+}
+
+func (i ISnapshot) Timestamp() *c.TsVbuuid {
+	return nil
+}
+
+func (i *ISnapshot) Partitions() map[c.PartitionId]indexer.PartitionSnapshot {
+	return map[c.PartitionId]indexer.PartitionSnapshot{0: i}
+}
+
+func (i ISnapshot) PartitionId() c.PartitionId {
+	return 0
+}
+
+func (i *ISnapshot) Slices() map[indexer.SliceId]indexer.SliceSnapshot {
+	return map[indexer.SliceId]indexer.SliceSnapshot{0: i}
+}
+
+func (i *ISnapshot) SliceId() indexer.SliceId {
+	return 0
+}
+
+func (i *ISnapshot) Snapshot() indexer.Snapshot {
+	return i.snap
+}
+
 func main() {
 
 	http.HandleFunc("/stats/mem", stats)
@@ -75,31 +107,37 @@ func main() {
 	}
 
 	ln, _ := net.Listen("tcp", ":8081")
-	src := &indexer.IndexScanSource{
-		Snapshot: snap,
-	}
-	dec := &indexer.IndexScanDecoder{}
-	send := &indexer.IndexScanWriter{}
 
 	for {
 		conn, _ := ln.Accept()
+		fmt.Println("got conn")
 
-		var p pipeline.Pipeline
+		go func() {
+			readBuf := make([]byte, 25)
+			defer conn.Close()
+			for {
+				_, err := conn.Read(readBuf)
+				if err != nil {
+					return
+				}
+				req := &indexer.ScanRequest{
+					Limit: 1, ScanType: indexer.ScanAllReq,
+				}
 
-		src.InitWriter()
-		dec.InitReadWriter()
-		send.W = conn
-		send.InitReader()
+				w := indexer.NewProtoWriter(indexer.ScanAllReq, conn)
 
-		dec.SetSource(src)
-		send.SetSource(dec)
+				snap := &ISnapshot{
+					snap: snap,
+				}
 
-		p.AddSource("source", src)
-		p.AddFilter("decoder", dec)
-		p.AddSink("sender", send)
-		p.Execute()
+				pipe := indexer.NewScanPipeline(req, w, snap)
+				pipe.Execute()
 
-		conn.Close()
+				w.Done()
+			}
+
+		}()
+
 	}
 
 	/*
