@@ -5,6 +5,7 @@ import (
 	c "github.com/couchbase/indexing/secondary/common"
 	"github.com/couchbase/indexing/secondary/indexer"
 	"os"
+	"runtime"
 	"strconv"
 	"time"
 )
@@ -28,6 +29,9 @@ func loader(ch chan *KV) {
 
 func main() {
 
+	var stats runtime.MemStats
+	var pause uint64
+
 	n, _ = strconv.Atoi(os.Args[1])
 	ch := make(chan *KV, 1000)
 	go loader(ch)
@@ -44,6 +48,9 @@ func main() {
 	si, _ := slice.NewSnapshot(nil, false)
 	snap, _ := slice.OpenSnapshot(si)
 	var count int = 0
+
+	runtime.ReadMemStats(&stats)
+	pause = stats.PauseTotalNs
 	st = time.Now()
 	quitch := make(indexer.StopChannel)
 	kch, _ := snap.KeySet(quitch)
@@ -51,7 +58,11 @@ func main() {
 	for _ = range kch {
 		count++
 	}
+	runtime.ReadMemStats(&stats)
+	fmt.Println(stats)
 	fmt.Printf("iterating (ch) %v items took %v\n", n, time.Now().Sub(st))
+	fmt.Printf("GC pause = %v ns\n", stats.PauseTotalNs-pause)
+	pause = stats.PauseTotalNs
 
 	st = time.Now()
 	count = 0
@@ -63,6 +74,8 @@ func main() {
 		return true
 	}
 	ckr.KeySetCb(cb)
+	runtime.ReadMemStats(&stats)
 	fmt.Printf("iterating (cb) %v items took %v\n", n, time.Now().Sub(st))
+	fmt.Printf("GC pause = %v ns\n", stats.PauseTotalNs-pause)
 
 }

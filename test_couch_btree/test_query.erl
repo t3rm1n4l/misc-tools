@@ -18,8 +18,20 @@ close_fast_fd(FilePid) ->
     Fd = erlang:erase({FilePid, fast_fd_read}),
     file:close(Fd).
 
+loop(0) ->
+    receive
+    after 100000 ->
+    ok
+    end,
+    ok;
+loop(N) ->
+    loop(N-1).
+
+
 
 start() ->
+    erlang:system_flag(scheduler_wall_time, true),
+    lists:foreach(fun(_) -> spawn(fun() -> loop(1000000000) end) end, lists:seq(1,6000)),
     Filename = "/Users/sarath/development/couchbase/ns_server/data/n_0/data/@indexes/default/main_da1eaf6fac28abafd16daa38c3bbbfd7.view.1",
     couch_file_write_guard:sup_start_link(),
     {ok, Fd} = couch_file:open(Filename),
@@ -40,7 +52,9 @@ start() ->
     close_fast_fd(Fd),
     Val
     end,
-    Ops = 5500,
+    Ops = 550,
     Start = os:timestamp(),
     calln(WrapperFn, Ops),
+    Stat=erlang:statistics(scheduler_wall_time),
+    io:format("scheduler stats ~p~n", [Stat]),
     io:format("~p ops/secs~n", [Ops/(timer:now_diff(os:timestamp(), Start)/1000000)]).

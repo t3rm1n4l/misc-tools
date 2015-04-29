@@ -16,12 +16,12 @@ func client(id int, server string, cancel bool) {
 		os.Exit(1)
 	}
 
-	go func() {
-		if cancel {
-			time.Sleep(time.Second * 5)
-			sn.Close()
-		}
-	}()
+	//go func() {
+	//if cancel {
+	//time.Sleep(time.Second * 5)
+	//sn.Close()
+	//}
+	//}()
 
 	for {
 		x, err := sn.Get()
@@ -32,7 +32,7 @@ func client(id int, server string, cancel bool) {
 				os.Exit(1)
 			}
 		}
-		fmt.Printf("Got config for client %v\nconfig:%v\n", id, x)
+		fmt.Printf("Got config for client %v\nconfig:%v\n", id, x.Msg)
 
 	}
 }
@@ -43,14 +43,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 1; i++ {
 		go client(i, "localhost:9000", false)
 	}
-	for i := 20; i < 40; i++ {
-		go client(i, "localhost:9001", false)
-	}
-	for i := 40; i < 60; i++ {
-		go client(i, "localhost:9002", true)
-	}
+	//for i := 20; i < 40; i++ {
+	//go client(i, "localhost:9001", false)
+	//}
+	//for i := 40; i < 60; i++ {
+	//go client(i, "localhost:9002", true)
+	//}
 	time.Sleep(time.Hour)
 }

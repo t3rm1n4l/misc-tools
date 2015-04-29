@@ -10,6 +10,7 @@ import "net/http"
 import "runtime"
 import _ "net/http/pprof"
 import "encoding/json"
+import "sync/atomic"
 
 var (
 	ReqSize  = 100
@@ -71,6 +72,8 @@ func main() {
 			http.ListenAndServe("localhost:9103", nil)
 		}()
 
+		var rs uint64
+
 		c := Client{
 			n:        0,
 			addr:     "localhost:7777",
@@ -108,6 +111,11 @@ func main() {
 					//				fmt.Println("client", i, "got resp", s.id, string(respBuf))
 					pool.Put(respBuf)
 					c.CloseStream(s.id)
+
+					x := atomic.AddUint64(&rs, 1)
+					if x%100000 == 0 {
+						fmt.Println(float64(x)/time.Now().Sub(t0).Seconds(), "reqs/sec")
+					}
 				}
 			}()
 		}
