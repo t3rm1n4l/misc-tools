@@ -26,6 +26,7 @@ def loop():
             print "GCInterval", gct
             print "NumHeapObjects", itm["HeapObjects"]
             print "NumHeapObjectsPerSec", (itm["HeapObjects"] - last["HeapObjects"])
+            print "NextGC", itm["NextGC"]/(1024*1024.0)
 
             print
 
