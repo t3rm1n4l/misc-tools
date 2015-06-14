@@ -4,6 +4,10 @@ import "crypto/rand"
 import "github.com/couchbase/go-couchbase"
 import "os"
 import "strconv"
+import "fmt"
+import "sync"
+
+//import "time"
 
 func randString(n int) string {
 	const alphanum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -17,16 +21,32 @@ func randString(n int) string {
 
 func main() {
 
-	c, _ := couchbase.Connect("http://Administrator:asdasd@127.0.0.1:9000")
+	c, _ := couchbase.Connect("http://127.0.0.1:9000")
 	p, _ := c.GetPool("default")
 	b, _ := p.GetBucket("default")
 
 	n, _ := strconv.Atoi(os.Args[1])
 	sz, _ := strconv.Atoi(os.Args[2])
+	nitr, _ := strconv.Atoi(os.Args[3])
+	nthr, _ := strconv.Atoi(os.Args[4])
 
-	for i := 0; i < n; i++ {
-		docid := randString(sz)
-		b.Set(docid, 0, map[string]interface{}{"name": docid})
+	for x := 0; x < nitr; x++ {
+		var wg sync.WaitGroup
+		for y := 0; y < nthr; y++ {
+			wg.Add(1)
+			go func(offset int) {
+				defer wg.Done()
+				for i := 0; i < n/nthr; i++ {
+					docid := fmt.Sprintf("docid-%d", i+offset)
+					err := b.Set(docid, 0, map[string]interface{}{"name": randString(sz)})
+					if err != nil {
+						fmt.Println(err)
+					}
+					//					time.Sleep(time.Microsecond * 100)
+				}
+			}(y * n / nthr)
+		}
+		wg.Wait()
 	}
 
 }
