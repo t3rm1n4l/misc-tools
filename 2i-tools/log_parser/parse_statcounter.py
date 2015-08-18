@@ -15,7 +15,7 @@ if __name__ == '__main__':
     needTs = sys.argv[3]
 
     for line in f.readlines():
-        if "Periodic" in line:
+        if "PeriodicStats" in line:
             parsed = r.findall(line)
             ts = parsed[0][0]
             time = parser.parse(ts)
@@ -23,6 +23,8 @@ if __name__ == '__main__':
             stats_json = json.loads(stats)
             if prevStats.has_key(counter):
                 last_cntr = prevStats[counter]
+                if not stats_json.has_key(counter):
+                    continue
                 curr_cntr = stats_json[counter]
                 d = time-last_time
                 secs = d.total_seconds()
