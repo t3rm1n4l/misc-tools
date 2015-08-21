@@ -7,7 +7,7 @@ import "strconv"
 import "fmt"
 import "sync"
 
-//import "time"
+import "time"
 
 func randString(n int) string {
 	const alphanum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -29,6 +29,7 @@ func main() {
 	sz, _ := strconv.Atoi(os.Args[2])
 	nitr, _ := strconv.Atoi(os.Args[3])
 	nthr, _ := strconv.Atoi(os.Args[4])
+	docOffset, _ := strconv.Atoi(os.Args[5])
 
 	for x := 0; x < nitr; x++ {
 		var wg sync.WaitGroup
@@ -37,12 +38,13 @@ func main() {
 			go func(offset int) {
 				defer wg.Done()
 				for i := 0; i < n/nthr; i++ {
-					docid := fmt.Sprintf("docid-%d", i+offset)
+					time.Sleep(20 * time.Microsecond)
+					docid := fmt.Sprintf("docid-%d", i+offset+docOffset)
 					err := b.Set(docid, 0, map[string]interface{}{"name": randString(sz)})
 					if err != nil {
 						fmt.Println(err)
 					}
-					//					time.Sleep(time.Microsecond * 100)
+					//time.Sleep(time.Microsecond * 2000)
 				}
 			}(y * n / nthr)
 		}
