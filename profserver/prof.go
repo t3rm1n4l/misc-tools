@@ -3,9 +3,7 @@ package profserver
 import _ "net/http/pprof"
 import "net/http"
 
-var Addr = "0:9102"
-
-func runProf() {
+func Init(Addr string) {
 	go func() {
 		http.ListenAndServe(Addr, nil)
 	}()
