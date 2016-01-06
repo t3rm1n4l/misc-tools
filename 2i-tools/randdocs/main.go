@@ -22,12 +22,12 @@ func randString(n int) string {
 
 func main() {
 
-	if len(os.Args) != 7 {
+	if len(os.Args) != 8 {
 		fmt.Println("./randdocs cluster:port count field_sz junk_field_sz iterations threads doc_offset")
 		os.Exit(1)
 	}
 
-	cluster, _ := strconv.Atoi(os.Args[1])
+	cluster := os.Args[1]
 	c, _ := couchbase.Connect(fmt.Sprintf("http://%s", cluster))
 	p, _ := c.GetPool("default")
 	b, _ := p.GetBucket("default")
@@ -50,7 +50,7 @@ func main() {
 				for i := 0; i < n/nthr; i++ {
 					time.Sleep(20 * time.Microsecond)
 					docid := fmt.Sprintf("doc-%025d", i+offset+docOffset)
-					err := b.Set(docid, 0, map[string]interface{}{"name": randString(sz), "junk": randString(junkSz)})
+					err := b.Set(docid, 0, map[string]interface{}{"name": randString(sz), "junk": fmt.Sprintf("%0*d", junkSz, 0)})
 					if err != nil {
 						fmt.Println(err)
 					}
