@@ -22,22 +22,22 @@ func randString(n int) string {
 
 func main() {
 
-	if len(os.Args) != 8 {
-		fmt.Println("./randdocs cluster:port count field_sz junk_field_sz iterations threads doc_offset")
+	if len(os.Args) != 9 {
+		fmt.Println("./randdocs cluster:port bucket count field_sz junk_field_sz iterations threads doc_offset")
 		os.Exit(1)
 	}
 
 	cluster := os.Args[1]
 	c, _ := couchbase.Connect(fmt.Sprintf("http://%s", cluster))
 	p, _ := c.GetPool("default")
-	b, _ := p.GetBucket("default")
+	b, _ := p.GetBucket(os.Args[2])
 
-	n, _ := strconv.Atoi(os.Args[2])
-	sz, _ := strconv.Atoi(os.Args[3])
-	junkSz, _ := strconv.Atoi(os.Args[4])
-	nitr, _ := strconv.Atoi(os.Args[5])
-	nthr, _ := strconv.Atoi(os.Args[6])
-	docOffset, _ := strconv.Atoi(os.Args[7])
+	n, _ := strconv.Atoi(os.Args[3])
+	sz, _ := strconv.Atoi(os.Args[4])
+	junkSz, _ := strconv.Atoi(os.Args[5])
+	nitr, _ := strconv.Atoi(os.Args[6])
+	nthr, _ := strconv.Atoi(os.Args[7])
+	docOffset, _ := strconv.Atoi(os.Args[8])
 
 	runtime.GOMAXPROCS(nthr)
 
